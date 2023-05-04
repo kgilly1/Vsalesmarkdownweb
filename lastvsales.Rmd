@@ -1,0 +1,133 @@
+---
+title: "lastvsales"
+output: html_document
+date: "2023-05-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r t}
+vsales <- read.csv("C:/Users/kaliy/OneDrive/Desktop/vsales.csv")
+##vsales
+```
+
+Changing year from a string to a date
+```{r tidy}
+library(tidyverse)
+Year <- as.Date(as.character(vsales$Year), format = "%Y")
+
+Year <- year(Year)
+view(Year)
+newvsales <- vsales%>%
+  select(Rank, Name, Year, Genre, Platform,NA_Sales, EU_Sales, JP_Sales, Other_Sales, Global_Sales, Platform, Publisher )%>%
+  mutate(Year= Year) 
+```
+
+```{r Genre to Sales}
+library(ggplot2)
+library("patchwork")
+
+NAS <- newvsales%>%
+  select(Genre, NA_Sales)%>%
+  mutate(Genre = fct_lump(Genre,9))%>%
+  ggplot(aes(Genre, NA_Sales))+
+  geom_bar(stat = "identity") +
+  coord_flip()
+  
+JP <-  newvsales%>%
+    select(Genre, JP_Sales)%>%
+    mutate(Genre = fct_lump(Genre,9))%>%
+    ggplot(aes(Genre, JP_Sales))+
+    geom_bar(stat = "identity")+
+    coord_flip()
+  
+ EU <-  newvsales%>%
+    select(Genre, EU_Sales)%>%
+    mutate(Genre = fct_lump(Genre,9))%>%
+    ggplot(aes(Genre, EU_Sales))+
+    geom_bar(stat = "identity")+
+    coord_flip()
+
+Other<-  newvsales%>%
+    select(Genre, Other_Sales)%>%
+    mutate(Genre = fct_lump(Genre,9))%>%
+    ggplot(aes(Genre, Other_Sales))+
+    geom_bar(stat = "identity")+
+    coord_flip()
+   
+ NAS + EU+ JP + Other
+ 
+```
+
+Change of sales over time  
+```{r time}
+library(patchwork)
+
+c <- newvsales%>%
+  group_by(Year)%>%
+  summarise(sumNA = sum(NA_Sales))
+
+p <- newvsales%>%
+  group_by(Year)%>%
+  summarise(sumEU = sum(EU_Sales))
+
+f <- newvsales%>%
+  group_by(Year)%>%
+  summarise(sumJP = sum(JP_Sales))
+
+a <- left_join(c, p , by ="Year")
+g <- left_join(a ,f, by= "Year")
+
+ggplot( g, aes(x =Year))+
+  geom_point(aes(y = sumNA, color = "NA"))+
+  geom_point(aes(y = sumEU, color = "EU")) +
+  geom_point(aes(y = sumJP, color = "JP"))+
+  coord_flip()
+
+```
+```{r publish}
+newvsales%>%
+  group_by(Publisher)%>%
+  summarise(pubna= sum(NA_Sales))%>%
+  arrange(desc(pubna))%>%
+  top_n(7, pubna)%>%
+  ggplot()+
+  aes(Publisher, pubna)+
+  geom_bar(stat = "identity")+
+  coord_flip()
+
+```
+
+```{r pie}
+allNA <- sum(newvsales$NA_Sales)
+
+newvsales%>%
+  group_by(Publisher)%>%
+  summarise(pubna= sum(NA_Sales))%>%
+  top_n(10, pubna)%>%
+  mutate(per=( (pubna/allNA) *100))%>%
+  arrange(desc(per))%>%
+  ggplot( aes(x = "", y =per , fill = Publisher)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y" , start = 0)+
+  geom_text(aes(x=1, y = cumsum(per)-per/2, label=round(per))) + 
+  labs(x =NULL, y = NULL, fill = NULL)
+
+
+
+```
+
+```{r newpack}
+library("plotly")
+library(dplyr)
+library("gapminder")
+
+plot1 <- ggplot(data = newvsales, aes(x = Platform, y = NA_Sales)) +
+  geom_point()+
+  coord_flip()
+
+ggplotly(plot1)
+
+```
